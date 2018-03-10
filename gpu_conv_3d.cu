@@ -41,9 +41,9 @@ tensor3 fromGpu(int* g_tensor, int cols, int rows, int depth){
 	cout << "mem cpy done" << endl;
 
 	for(int k = 0; k<depth; k++){
-		for(int i = 0; i<cols; i++){
-			for(int j = 0; j<rows; j++){
-				res[i][j][k] = cf_tensor[k *  cols * rows + i * cols + j];
+		for(int j = 0; j<rows; j++){
+			for(int i = 0; i<cols; i++){
+				res[k][i][j] = cf_tensor[k *  cols * rows + i * cols + j];
 			}
 		}
 	}
@@ -67,15 +67,16 @@ __global__ void conv_3d_gpu(int* in, int* kernel, int* out, int cols,int rows,in
 		for(int j = 0; j<rows; j+= stride){
 			for(int i = 0; i<cols; i+= stride){
 
+				int t = 0;
 				for(int l = 0; l<kDepth; l++){
 					for(int n = 0; n<kRows; n++){
 						for(int m = 0; m<kCols; m++){
-							out[cnt] += in[(k+l) * p_cols * p_rows + (j+n) * p_cols + (i+m)] *
+							t += in[(k+l) * p_cols * p_rows + (j+n) * p_cols + (i+m)] *
 									kernel[l * kRows * kCols + n * kCols + m];
 						}
 					}
 				}
-				++cnt;
+				out[cnt++] = t;
 			}
 		}
 	}
@@ -106,7 +107,7 @@ __host__ void conv_3d_gpu(tensor3 in, tensor3 kernel, int cols, int rows, int de
 
 		cout << "init gpu start" << endl;
 
-		int* g_in = initGpuTensor(inPad, cols, rows, depth);
+		int* g_in = initGpuTensor(inPad, cols + 2 * padding, rows + 2 * padding, depth + 2 * padding);
 		int* g_kernel = initGpuTensor(kernel, kCols, kRows, kDepth);
 		int* g_out = initGpuTensor(out, rCols, rRows, rDepth);
 
