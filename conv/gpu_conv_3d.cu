@@ -107,7 +107,11 @@ __host__ void conv_3d_gpu(tensor3 in, tensor3 kernel, int cols, int rows, int de
 		int* g_kernel = initGpuTensor(kernel, kCols, kRows, kDepth);
 		int* g_out = initGpuTensor(out, rCols, rRows, rDepth);
 
-		conv_3d_gpu<<<2,4>>>(g_in, g_kernel, g_out, cols, rows, depth, stride, kCols, kRows, kDepth);
+		cout << "starting convolution" << endl;
+
+		conv_3d_gpu<<<1,1>>>(g_in, g_kernel, g_out, cols, rows, depth, stride, kCols, kRows, kDepth);
+
+		cudaDeviceSynchronize();
 
 		tensor3 c_out = fromGpu(g_out, rCols, rRows, rDepth);
 

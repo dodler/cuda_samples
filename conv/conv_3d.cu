@@ -97,7 +97,7 @@ void cpu_test(int dim, int kdim, int padding, int stride, int resDim){
 	int ITER = 2;
 	for(int i = 0; i<ITER; i++){
 		start = clock();
-		tensor3 con = conv_3d(large, kernel, dim,dim,dim,kdim,kdim,kdim,1,0);
+		tensor3 con = conv_3d(large, kernel, dim,dim,dim,kdim,kdim,kdim,stride,padding);
 		total += double(clock() - start) / CLOCKS_PER_SEC;
 		deleteTensor3(con, resDim,resDim,resDim);
 	}
@@ -105,6 +105,10 @@ void cpu_test(int dim, int kdim, int padding, int stride, int resDim){
 	cout << "avg time:" << total / ITER << endl;
 
 	cout << "convolution done" << endl;
+
+	tensor3 con = conv_3d(large, kernel, dim,dim,dim,kdim,kdim,kdim,stride,padding);
+	printSlice(con, 0, resDim,resDim);
+	deleteTensor3(con, resDim,resDim,resDim);
 
 	deleteTensor3(large, dim, dim, dim);
 	deleteTensor3(kernel, kdim, kdim, kdim);
@@ -144,9 +148,9 @@ __host__ void gpu_test(int dim, int kdim, int padding, int stride, int resDim){
 }
 
 __host__ int main(){
-	int dim = 81;
+	int dim = 16;
 	int kdim = 3;
-	int padding = 0;
+	int padding = 1;
 	int stride = 1;
 	int resDim = (dim + 2 * padding - kdim) / stride + 1;
 
