@@ -106,9 +106,6 @@ void cpu_test(tensor3 large, tensor3 kernel, int dim, int kdim, int padding, int
 	tensor3 con = conv_3d(large, kernel, dim,dim,dim,kdim,kdim,kdim,stride,padding);
 	printSlice(con, 0, resDim,resDim);
 	deleteTensor3(con, resDim,resDim,resDim);
-
-	deleteTensor3(large, dim, dim, dim);
-	deleteTensor3(kernel, kdim, kdim, kdim);
 }
 
 
@@ -117,24 +114,7 @@ __host__ void gpu_test(tensor3 large, tensor3 kernel,int dim, int kdim, int padd
 
 	cout << "starting gpu test" << endl;
 
-	int* g_large = initGpuTensor(large, dim, dim,dim);
-	int* g_kernel = initGpuTensor(kernel, kdim,kdim,kdim);
-
-	cout << "gpu ini donet" << endl;
-
 	conv_3d_gpu(large, kernel, dim,dim,dim,kdim,kdim,kdim, padding, stride);
-
-	cout << "conv done" << endl;
-
-	int* out = new int[kdim * kdim * kdim];
-	CUDA_CHECK_RETURN(cudaMemcpy(out, g_kernel, t3_int_size(kdim,kdim,kdim), cudaMemcpyDeviceToHost));
-	cout << out[0] << " " << out[1] << endl;
-
-	CUDA_CHECK_RETURN(cudaFree(g_large));
-	CUDA_CHECK_RETURN(cudaFree(g_kernel));
-
-	deleteTensor3(large, dim, dim, dim);
-	deleteTensor3(kernel, kdim, kdim, kdim);
 
 	cout << "gpu test end" << endl;
 }
@@ -151,4 +131,7 @@ __host__ int main(){
 
 	cpu_test(large, kernel, dim, kdim, padding, stride,resDim);
 	gpu_test(large, kernel, dim,kdim, padding,stride, resDim);
+
+	deleteTensor3(large, dim, dim, dim);
+	deleteTensor3(kernel, kdim, kdim, kdim);
 }
