@@ -84,13 +84,21 @@ tensor3 conv_3d(tensor3 in, tensor3 kernel, int cols,int rows, int depth, int kC
 	return out;
 }
 
+<<<<<<< HEAD:conv3d.cu
 tensor3 cpu_test(tensor3 large, tensor3 kernel, int dim, int kdim, int padding, int stride, int resDim){
+=======
+void cpu_test(tensor3 large, tensor3 kernel, int dim, int kdim, int padding, int stride, int resDim){
+>>>>>>> 789d4c43a9fc194d5ec9688d9dbd5b9cdeb0b8c8:conv3d.cu
 
 	cout << "starting cpu test" << endl;
 
 	cout << "starting convolution" << endl;
 	clock_t start;
 	double total = 0;
+<<<<<<< HEAD:conv3d.cu
+=======
+	int ITER = 10;
+>>>>>>> 789d4c43a9fc194d5ec9688d9dbd5b9cdeb0b8c8:conv3d.cu
 	for(int i = 0; i<ITER; i++){
 		start = clock();
 		tensor3 con = conv_3d(large, kernel, dim,dim,dim,kdim,kdim,kdim,stride,padding);
@@ -104,11 +112,16 @@ tensor3 cpu_test(tensor3 large, tensor3 kernel, int dim, int kdim, int padding, 
 
 	tensor3 con = conv_3d(large, kernel, dim,dim,dim,kdim,kdim,kdim,stride,padding);
 //	printSlice(con, 0, resDim,resDim);
+<<<<<<< HEAD:conv3d.cu
 	return con;
+=======
+	deleteTensor3(con, resDim,resDim,resDim);
+>>>>>>> 789d4c43a9fc194d5ec9688d9dbd5b9cdeb0b8c8:conv3d.cu
 }
 
 
 
+<<<<<<< HEAD:conv3d.cu
 __host__ tensor3 gpu_test(tensor3 large, tensor3 kernel,int dim, int kdim, int padding, int stride, int resDim){
 	return conv_3d_gpu(large, kernel, dim,dim,dim,kdim,kdim,kdim, padding, stride);
 }
@@ -145,6 +158,29 @@ __host__ int main(){
 
 	deleteTensor3(res, resDim,resDim,resDim);
 	deleteTensor3(g_res, resDim,resDim,resDim);
+=======
+__host__ void gpu_test(tensor3 large, tensor3 kernel,int dim, int kdim, int padding, int stride, int resDim){
+
+	cout << "starting gpu test" << endl;
+
+	conv_3d_gpu(large, kernel, dim,dim,dim,kdim,kdim,kdim, padding, stride);
+
+	cout << "gpu test end" << endl;
+}
+
+__host__ int main(){
+	int dim = 178;
+	int kdim = 3;
+	int padding = 1;
+	int stride = 1;
+	int resDim = (dim + 2 * padding - kdim) / stride + 1;
+
+	tensor3 large = initSeq(dim);
+	tensor3 kernel = initVals(kdim,1);
+
+	cpu_test(large, kernel, dim, kdim, padding, stride,resDim);
+	gpu_test(large, kernel, dim,kdim, padding,stride, resDim);
+>>>>>>> 789d4c43a9fc194d5ec9688d9dbd5b9cdeb0b8c8:conv3d.cu
 
 	deleteTensor3(large, dim, dim, dim);
 	deleteTensor3(kernel, kdim, kdim, kdim);
