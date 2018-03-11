@@ -10,6 +10,42 @@
 
 #include "common.h"
 
+struct GpuTimer
+{
+	cudaEvent_t start;
+	cudaEvent_t stop;
+
+	GpuTimer()
+	{
+		cudaEventCreate(&start);
+		cudaEventCreate(&stop);
+	}
+
+	~GpuTimer()
+	{
+		cudaEventDestroy(start);
+		cudaEventDestroy(stop);
+	}
+
+	void Start()
+	{
+		cudaEventRecord(start, 0);
+	}
+
+	void Stop()
+	{
+		cudaEventRecord(stop, 0);
+	}
+
+	float Elapsed()
+	{
+		float elapsed;
+		cudaEventSynchronize(stop);
+		cudaEventElapsedTime(&elapsed, start, stop);
+		return elapsed / 1000;
+	}
+};
+
 int* initGpuTensor(tensor3 t,int d1,int d2, int d3);
 __global__ void conv_3d_gpu(int* in, int* kernel, int* out, int cols,int rows,int depth, int stride,
 		int kCols, int kRows, int kDepth);

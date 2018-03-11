@@ -73,6 +73,18 @@ __global__ void conv_3d_gpu(int* in, int* kernel, int* out, int cols,int rows,in
 	int resid = cols - cols_per_block * num_thr;
 	int resid_rows = rows - rows_per_block * num_blocks;
 
+	__shared__ int shared_in[4096];
+
+	int cnt = 0;
+
+	for(int k = 0; k<depth; k+=stride)
+		for(int j = 0; j<rows; j+= stride)
+			for(int i = pos * cols_per_block; i<(pos+1) * cols_per_block; i+= stride)
+				for(int l = 0; l<kDepth; l++)
+					for(int n = 0; n<kRows; n++)
+						for(int m = 0; m<kCols; m++)
+							shared_in[cnt++] = in[(k+l) * p_cols * p_rows + (j+n) * p_cols + (i+m)];
+
 	for(int k = 0; k<depth; k+=stride){
 		for(int j = block_pos * rows_per_block; j<(block_pos+1) * rows_per_block; j+= stride){
 			for(int i = pos * cols_per_block; i<(pos+1) * cols_per_block; i+= stride){
@@ -82,7 +94,7 @@ __global__ void conv_3d_gpu(int* in, int* kernel, int* out, int cols,int rows,in
 				for(int l = 0; l<kDepth; l++){
 					for(int n = 0; n<kRows; n++){
 						for(int m = 0; m<kCols; m++){
-							t += in[(k+l) * p_cols * p_rows + (j+n) * p_cols + (i+m)] *
+							t += shared_in[(k+l) * p_cols * p_rows + (j+n) * p_cols + (i+m)] *
 									kernel[l * kRows * kCols + n * kCols + m];
 						}
 					}
@@ -111,23 +123,23 @@ __global__ void conv_3d_gpu(int* in, int* kernel, int* out, int cols,int rows,in
 				}
 			}
 		}
-//		for(int k = 0; k<depth; k+=stride){
-//			for(int j = rows - resid_rows; j<rows; j+= stride){
-//				for(int i = 0; i<cols; i+= stride){
-//
-//					int t = 0;
-//					for(int l = 0; l<kDepth; l++){
-//						for(int n = 0; n<kRows; n++){
-//							for(int m = 0; m<kCols; m++){
-//								t += in[(k+l) * p_cols * p_rows + (j+n) * p_cols + (i+m)] *
-//									 kernel[l * kRows * kCols + n * kCols + m];
-//							}
-//						}
-//					}
-//					out[k * cols * rows + j * cols + i] = t;
-//				}
-//			}
-//		}
+		for(int k = 0; k<depth; k+=stride){
+			for(int j = rows - resid_rows; j<rows; j+= stride){
+				for(int i = 0; i<cols; i+= stride){
+
+					int t = 0;
+					for(int l = 0; l<kDepth; l++){
+						for(int n = 0; n<kRows; n++){
+							for(int m = 0; m<kCols; m++){
+								t += in[(k+l) * p_cols * p_rows + (j+n) * p_cols + (i+m)] *
+									 kernel[l * kRows * kCols + n * kCols + m];
+							}
+						}
+					}
+					out[k * cols * rows + j * cols + i] = t;
+				}
+			}
+		}
 	}
 }
 
@@ -165,10 +177,14 @@ __host__ tensor3 conv_3d_gpu(tensor3 in, tensor3 kernel, int cols, int rows, int
 		double total = 0;
 
 		for(int i = 0; i<ITER; i++){
-			clock_t start = clock();
+			GpuTimer timer;
+			timer.Start();
+
 			conv_3d_gpu<<<32,32>>>(g_in, g_kernel, g_out, cols, rows, depth, padding, stride, kCols, kRows, kDepth);
-			total += double(clock() - start) / CLOCKS_PER_SEC;
-			cudaDeviceSynchronize();
+
+			timer.Stop();
+			total += timer.Elapsed();
+
 		}
 
 		cout << "gpu avg time:" << total / ITER << endl;
