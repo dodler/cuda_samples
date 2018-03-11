@@ -43,10 +43,10 @@ int* flat(tensor3 t, int cols,int rows, int depth){
 		}
 	}
 
-	for(int i = 0; i<cnt; i++){
-		cout << res[i] << " ";
-	}
-	cout << endl;
+//	for(int i = 0; i<cnt; i++){
+//		cout << res[i] << " ";
+//	}
+//	cout << endl;
 
 	return res;
 }

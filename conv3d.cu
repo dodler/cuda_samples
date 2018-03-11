@@ -91,7 +91,7 @@ void cpu_test(tensor3 large, tensor3 kernel, int dim, int kdim, int padding, int
 	cout << "starting convolution" << endl;
 	clock_t start;
 	double total = 0;
-	int ITER = 2;
+	int ITER = 10;
 	for(int i = 0; i<ITER; i++){
 		start = clock();
 		tensor3 con = conv_3d(large, kernel, dim,dim,dim,kdim,kdim,kdim,stride,padding);
@@ -104,7 +104,7 @@ void cpu_test(tensor3 large, tensor3 kernel, int dim, int kdim, int padding, int
 	cout << "convolution done" << endl;
 
 	tensor3 con = conv_3d(large, kernel, dim,dim,dim,kdim,kdim,kdim,stride,padding);
-	printSlice(con, 0, resDim,resDim);
+//	printSlice(con, 0, resDim,resDim);
 	deleteTensor3(con, resDim,resDim,resDim);
 }
 
@@ -120,7 +120,7 @@ __host__ void gpu_test(tensor3 large, tensor3 kernel,int dim, int kdim, int padd
 }
 
 __host__ int main(){
-	int dim = 4;
+	int dim = 178;
 	int kdim = 3;
 	int padding = 1;
 	int stride = 1;

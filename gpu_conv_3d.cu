@@ -13,6 +13,8 @@
 #include <iostream>
 #include <cuda.h>
 
+#include <ctime>
+
 #include "common.h"
 #include "gpu_conv_3d.h"
 
@@ -58,14 +60,20 @@ tensor3 fromGpu(int* g_tensor, int cols, int rows, int depth){
 __global__ void conv_3d_gpu(int* in, int* kernel, int* out, int cols,int rows,int depth, int padding, int stride,
 		int kCols, int kRows, int kDepth){
 
-	int cnt = 0;
+	int pos = blockIdx.x * blockDim.x + threadIdx.x;
+	int num_thr = blockDim.x;
+//	int num_thr = 4;
 
 	int p_cols = cols + 2 * padding;
 	int p_rows = rows + 2 * padding;
 
+	int cols_per_block = cols / num_thr;
+	int resid = cols - cols_per_block * num_thr;
+
 	for(int k = 0; k<depth; k+=stride){
 		for(int j = 0; j<rows; j+= stride){
-			for(int i = 0; i<cols; i+= stride){
+			for(int i = pos * cols_per_block; i<(pos+1) * cols_per_block; i+= stride){
+//			for(int i = 0; i<cols; i+= stride){
 
 				int t = 0;
 				for(int l = 0; l<kDepth; l++){
@@ -76,7 +84,28 @@ __global__ void conv_3d_gpu(int* in, int* kernel, int* out, int cols,int rows,in
 						}
 					}
 				}
-				out[cnt++] = t;
+				out[k * cols * rows + j * cols + i] = t;
+//				out[cnt++] = threadIdx.x;
+			}
+		}
+	}
+
+	if (pos == 0){
+		for(int k = 0; k<depth; k+=stride){
+			for(int j = 0; j<rows; j+= stride){
+				for(int i = cols - resid; i<cols; i+= stride){
+
+					int t = 0;
+					for(int l = 0; l<kDepth; l++){
+						for(int n = 0; n<kRows; n++){
+							for(int m = 0; m<kCols; m++){
+								t += in[(k+l) * p_cols * p_rows + (j+n) * p_cols + (i+m)] *
+											kernel[l * kRows * kCols + n * kCols + m];
+							}
+						}
+					}
+					out[k * cols * rows + j * cols + i] = t;
+				}
 			}
 		}
 	}
@@ -113,7 +142,17 @@ __host__ void conv_3d_gpu(tensor3 in, tensor3 kernel, int cols, int rows, int de
 
 		cout << "starting convolution" << endl;
 
-		conv_3d_gpu<<<1,1>>>(g_in, g_kernel, g_out, cols, rows, depth, padding, stride, kCols, kRows, kDepth);
+		int ITER = 10;
+		double total = 0;
+
+		for(int i = 0; i<ITER; i++){
+			clock_t start = clock();
+			conv_3d_gpu<<<1,64>>>(g_in, g_kernel, g_out, cols, rows, depth, padding, stride, kCols, kRows, kDepth);
+			total += double(clock() - start) / CLOCKS_PER_SEC;
+			cudaDeviceSynchronize();
+		}
+
+		cout << "gpu avg time:" << total / ITER << endl;
 
 		cudaDeviceSynchronize();
 
@@ -121,7 +160,14 @@ __host__ void conv_3d_gpu(tensor3 in, tensor3 kernel, int cols, int rows, int de
 
 		cout << "from gpu done" << endl;
 
-		printSlice(c_out, 0, rRows, rCols);
+//		printSlice(c_out, 0, rRows, rCols);
+//		cout << "-------------------------" << endl;
+//		printSlice(c_out, 1, rRows, rCols);
+//		cout << "-------------------------" << endl;
+//		printSlice(c_out, 2, rRows, rCols);
+//		cout << "-------------------------" << endl;
+//		printSlice(c_out, 3, rRows, rCols);
+//		cout << "-------------------------" << endl;
 
 		CUDA_CHECK_RETURN(cudaFree(g_in));
 		CUDA_CHECK_RETURN(cudaFree(g_kernel));
