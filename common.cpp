@@ -30,18 +30,23 @@ int t3_int_size(int d1,int d2, int d3){
 	return sizeof(int) * d1 * d2 * d3;
 }
 
-int* flat(tensor3 t, int d1,int d2, int d3){
-	int* res = new int[d1 * d2 * d3];
+int* flat(tensor3 t, int cols,int rows, int depth){
+	int* res = new int[cols * rows * depth];
 
 	int cnt = 0;
 
-	for(int i = 0; i< d1; i++){
-		for(int j = 0; j<d2; j++){
-			for(int k = 0; k<d3; k++){
-				res[cnt++] = t[i][j][k];
+	for(int k = 0; k<depth; k++){
+		for(int j = 0; j<rows; j++){
+			for(int i = 0; i< cols; i++){
+				res[cnt++] = t[k][j][i];
 			}
 		}
 	}
+
+//	for(int i = 0; i<cnt; i++){
+//		cout << res[i] << " ";
+//	}
+//	cout << endl;
 
 	return res;
 }

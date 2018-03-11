@@ -6,6 +6,8 @@ typedef int*** tensor3;
 #include <device_launch_parameters.h>
 #include <driver_types.h>
 
+#define ITER 1.0
+
 #include <iostream>
 
 void CheckCudaErrorAux(const char *file, unsigned line,
