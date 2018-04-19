@@ -67,11 +67,17 @@ __global__ void conv_3d_gpu(int* in, int* kernel, int* out, int cols,int rows,in
 
 	int p_cols = cols + 2 * padding;
 	int p_rows = rows + 2 * padding;
+	int p_depth = depth + 2 * padding;
 
-	int cols_per_block = cols / num_thr;
-	int rows_per_block = rows / num_blocks;
-	int resid = cols - cols_per_block * num_thr;
-	int resid_rows = rows - rows_per_block * num_blocks;
+	int cols_per_block = p_cols / num_thr;
+	int rows_per_block = p_rows / num_blocks;
+	int resid = p_cols - cols_per_block * num_thr;
+	int resid_rows = p_rows - rows_per_block * num_blocks;
+
+	int rCols = (cols + 2 * padding - kCols) / stride + 1;
+	int rRows = (rows + 2 * padding - kRows) / stride + 1;
+	int rDepth = (depth + 2 * padding - kDepth) / stride + 1;
+
 
 	__shared__ int shared_in[4096];
 
@@ -83,12 +89,11 @@ __global__ void conv_3d_gpu(int* in, int* kernel, int* out, int cols,int rows,in
 				for(int l = 0; l<kDepth; l++)
 					for(int n = 0; n<kRows; n++)
 						for(int m = 0; m<kCols; m++)
-							shared_in[cnt++] = in[(k+l) * p_cols * p_rows + (j+n) * p_cols + (i+m)];
+							shared_in[cnt++] = in[(k+l) * cols * rows + (j+n) * cols + (i+m)];
 
-	for(int k = 0; k<depth; k+=stride){
+	for(int k = 0; k<p_depth; k+=stride){
 		for(int j = block_pos * rows_per_block; j<(block_pos+1) * rows_per_block; j+= stride){
 			for(int i = pos * cols_per_block; i<(pos+1) * cols_per_block; i+= stride){
-//			for(int i = 0; i<cols; i+= stride){
 
 				int t = 0;
 				for(int l = 0; l<kDepth; l++){
@@ -99,16 +104,15 @@ __global__ void conv_3d_gpu(int* in, int* kernel, int* out, int cols,int rows,in
 						}
 					}
 				}
-				out[k * cols * rows + j * cols + i] = t;
-//				out[cnt++] = threadIdx.x;
+				out[k * rCols * rRows + j * rCols + i] = t;
 			}
 		}
 	}
 
 	if (pos == 0){
-		for(int k = 0; k<depth; k+=stride){
-			for(int j = 0; j<rows; j+= stride){
-				for(int i = cols - resid; i<cols; i+= stride){
+		for(int k = 0; k<p_depth; k+=stride){
+			for(int j = 0; j<p_rows; j+= stride){
+				for(int i = p_cols - resid; i<p_cols; i+= stride){
 
 					int t = 0;
 					for(int l = 0; l<kDepth; l++){
@@ -119,13 +123,13 @@ __global__ void conv_3d_gpu(int* in, int* kernel, int* out, int cols,int rows,in
 							}
 						}
 					}
-					out[k * cols * rows + j * cols + i] = t;
+					out[k * rCols * rRows + j * rCols + i] = t;
 				}
 			}
 		}
-		for(int k = 0; k<depth; k+=stride){
-			for(int j = rows - resid_rows; j<rows; j+= stride){
-				for(int i = 0; i<cols; i+= stride){
+		for(int k = 0; k<p_depth; k+=stride){
+			for(int j = p_rows - resid_rows; j<p_rows; j+= stride){
+				for(int i = 0; i<p_cols; i+= stride){
 
 					int t = 0;
 					for(int l = 0; l<kDepth; l++){
@@ -136,11 +140,12 @@ __global__ void conv_3d_gpu(int* in, int* kernel, int* out, int cols,int rows,in
 							}
 						}
 					}
-					out[k * cols * rows + j * cols + i] = t;
+					out[k * rCols * rRows + j * rCols + i] = t;
 				}
 			}
 		}
 	}
+
 }
 
 __host__ tensor3 conv_3d_gpu(tensor3 in, tensor3 kernel, int cols, int rows, int depth,
@@ -166,6 +171,8 @@ __host__ tensor3 conv_3d_gpu(tensor3 in, tensor3 kernel, int cols, int rows, int
 
 		tensor3 inPad = pad(in, cols, rows, depth, padding);
 
+//		printSlice(inPad, 1, cols + 2 * padding, rows + 2 * padding);
+
 		cout << "init gpu start" << endl;
 
 		int* g_in = initGpuTensor(inPad, cols + 2 * padding, rows + 2 * padding, depth + 2 * padding);
@@ -180,7 +187,7 @@ __host__ tensor3 conv_3d_gpu(tensor3 in, tensor3 kernel, int cols, int rows, int
 			GpuTimer timer;
 			timer.Start();
 
-			conv_3d_gpu<<<32,32>>>(g_in, g_kernel, g_out, cols, rows, depth, padding, stride, kCols, kRows, kDepth);
+			conv_3d_gpu<<<128,128>>>(g_in, g_kernel, g_out, cols, rows, depth, padding, stride, kCols, kRows, kDepth);
 
 			timer.Stop();
 			total += timer.Elapsed();
@@ -195,10 +202,10 @@ __host__ tensor3 conv_3d_gpu(tensor3 in, tensor3 kernel, int cols, int rows, int
 
 		cout << "from gpu done" << endl;
 
-//		printSlice(c_out, 0, rRows, rCols);
-//		cout << "-------------------------" << endl;
-//		printSlice(c_out, 1, rRows, rCols);
-//		cout << "-------------------------" << endl;
+		printSlice(c_out, 0, rRows, rCols);
+		cout << "-------------------------" << endl;
+		printSlice(c_out, 1, rRows, rCols);
+		cout << "-------------------------" << endl;
 //		printSlice(c_out, 2, rRows, rCols);
 //		cout << "-------------------------" << endl;
 //		printSlice(c_out, 3, rRows, rCols);
