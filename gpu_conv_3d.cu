@@ -40,6 +40,9 @@ tensor3 fromGpu(int* g_tensor, int cols, int rows, int depth){
 
 	CUDA_CHECK_RETURN(cudaMemcpy(cf_tensor, g_tensor, t3_int_size(cols, rows, depth), cudaMemcpyDeviceToHost));
 
+	for(int i = 0; i<20; i++)
+		cout << cf_tensor[i] << " ";
+
 	cout << "mem cpy done" << endl;
 
 	for(int k = 0; k<depth; k++){
@@ -63,16 +66,15 @@ __global__ void conv_3d_gpu(int* in, int* kernel, int* out, int cols,int rows,in
 	int pos = blockIdx.x * blockDim.x + threadIdx.x;
 	int num_thr = blockDim.x;
 	int num_blocks = gridDim.x;
-	int block_pos = blockDim.x;
 
 	int p_cols = cols + 2 * padding;
 	int p_rows = rows + 2 * padding;
 	int p_depth = depth + 2 * padding;
 
-	int cols_per_block = p_cols / num_thr;
-	int rows_per_block = p_rows / num_blocks;
-	int resid = p_cols - cols_per_block * num_thr;
-	int resid_rows = p_rows - rows_per_block * num_blocks;
+	int cols_per_block = p_cols / num_blocks;
+	int rows_per_block = p_rows / num_thr;
+	int resid_cols = p_cols - cols_per_block * num_blocks;
+	int resid_rows = p_rows - rows_per_block * num_thr;
 
 	int rCols = (cols + 2 * padding - kCols) / stride + 1;
 	int rRows = (rows + 2 * padding - kRows) / stride + 1;
@@ -80,29 +82,25 @@ __global__ void conv_3d_gpu(int* in, int* kernel, int* out, int cols,int rows,in
 
 
 	__shared__ int shared_in[4096];
+//
+//	if (threadIdx.x < p_depth){
+//		int k = threadIdx.x;
+//		for(int j = 0; j<p_rows; j++)
+//			for(int i = 0; i<p_cols; i++)
+//				shared_in[(k) * p_cols * p_rows + (j) * p_cols + (i)] = in[(k) * p_cols * p_rows + (j) * p_cols + (i)];
+//	}
 
-	int cnt = 0;
-
-	if (pos < depth){
-		int k = pos;
-		for(int j = 0; j<rows; j+= stride)
-			for(int i = pos * cols_per_block; i<(pos+1) * cols_per_block; i+= stride)
-				for(int l = 0; l<kDepth; l++)
-					for(int n = 0; n<kRows; n++)
-						for(int m = 0; m<kCols; m++)
-							shared_in[cnt++] = in[(k+l) * cols * rows + (j+n) * cols + (i+m)];
-	}
 
 	if (pos < p_depth){
 		int k = pos;
-		for(int j = block_pos * rows_per_block; j<(block_pos+1) * rows_per_block; j+= stride){
-			for(int i = pos * cols_per_block; i<(pos+1) * cols_per_block; i+= stride){
+		for(int j = blockIdx.x * rows_per_block; j<(blockIdx.x+1) * rows_per_block; j+= stride){
+			for(int i = threadIdx.x* cols_per_block; i<(threadIdx.x+1) * cols_per_block; i+= stride){
 
 				int t = 0;
 				for(int l = 0; l<kDepth; l++){
 					for(int n = 0; n<kRows; n++){
 						for(int m = 0; m<kCols; m++){
-							t += shared_in[(k+l) * p_cols * p_rows + (j+n) * p_cols + (i+m)] *
+							t += in[(k+l) * p_cols * p_rows + (j+n) * p_cols + (i+m)] *
 									kernel[l * kRows * kCols + n * kCols + m];
 						}
 					}
@@ -112,44 +110,47 @@ __global__ void conv_3d_gpu(int* in, int* kernel, int* out, int cols,int rows,in
 		}
 	}
 
-	if (pos < p_depth){
-		int k = pos;
+	if (blockIdx.x < p_depth && threadIdx.x < p_rows){
+		int k = blockIdx.x;
+		int j = threadIdx.x;
 
+		for(int i = p_cols - resid_cols; i<p_cols; i+= stride){
+
+			int t = 0;
+			for(int l = 0; l<kDepth; l++){
+				for(int n = 0; n<kRows; n++){
+					for(int m = 0; m<kCols; m++){
+						t += in[(k+l) * p_cols * p_rows + (j+n) * p_cols + (i+m)] *
+									kernel[l * kRows * kCols + n * kCols + m];
+					}
+				}
+			}
+			out[k * rCols * rRows + j * rCols + i] = t;
+		}
+	}
+
+	if (threadIdx.x < p_cols && blockIdx.x < p_depth){
+		int i = threadIdx.x;
+		int k = blockIdx.x;
+//		for(int k = 0; k<p_depth; k++){
 		for(int j = 0; j<p_rows; j+= stride){
-			for(int i = p_cols - resid; i<p_cols; i+= stride){
-
-				int t = 0;
-				for(int l = 0; l<kDepth; l++){
-					for(int n = 0; n<kRows; n++){
-						for(int m = 0; m<kCols; m++){
-							t += in[(k+l) * p_cols * p_rows + (j+n) * p_cols + (i+m)] *
-										kernel[l * kRows * kCols + n * kCols + m];
-						}
+			int t = 0;
+			for(int l = 0; l<kDepth; l++){
+				for(int n = 0; n<kRows; n++){
+					for(int m = 0; m<kCols; m++){
+//						if (in[(k+l) * p_cols * p_rows + (j+n) * p_cols + (i+m)] > 0){
+//							t++;
+//						}
+						t = k;
+//						t += in[(k+l) * p_cols * p_rows + (j+n) * p_cols + (i+m)] *
+//							 kernel[l * kRows * kCols + n * kCols + m];
 					}
 				}
-				out[k * rCols * rRows + j * rCols + i] = t;
 			}
+			out[k * rCols * rRows + (j-1) * (rCols)+ i] = t;
+//		}
 		}
 	}
-
-	for(int k = 0; k<p_depth; k+=stride){
-		for(int j = p_rows - resid_rows; j<p_rows; j+= stride){
-			for(int i = 0; i<p_cols; i+= stride){
-
-				int t = 0;
-				for(int l = 0; l<kDepth; l++){
-					for(int n = 0; n<kRows; n++){
-						for(int m = 0; m<kCols; m++){
-							t += in[(k+l) * p_cols * p_rows + (j+n) * p_cols + (i+m)] *
-								 kernel[l * kRows * kCols + n * kCols + m];
-						}
-					}
-				}
-				out[k * rCols * rRows + j * rCols + i] = t;
-			}
-		}
-	}
-
 }
 
 __host__ tensor3 conv_3d_gpu(tensor3 in, tensor3 kernel, int cols, int rows, int depth,
@@ -174,8 +175,6 @@ __host__ tensor3 conv_3d_gpu(tensor3 in, tensor3 kernel, int cols, int rows, int
 		tensor3 out = initVals(rCols,rRows,rDepth,0);
 
 		tensor3 inPad = pad(in, cols, rows, depth, padding);
-
-//		printSlice(inPad, 1, cols + 2 * padding, rows + 2 * padding);
 
 		cout << "init gpu start" << endl;
 
@@ -206,14 +205,14 @@ __host__ tensor3 conv_3d_gpu(tensor3 in, tensor3 kernel, int cols, int rows, int
 
 		cout << "from gpu done" << endl;
 
-//		printSlice(c_out, 0, rRows, rCols);
-//		cout << "-------------------------" << endl;
-//		printSlice(c_out, 1, rRows, rCols);
-//		cout << "-------------------------" << endl;
-//		printSlice(c_out, 2, rRows, rCols);
-//		cout << "-------------------------" << endl;
-//		printSlice(c_out, 3, rRows, rCols);
-//		cout << "-------------------------" << endl;
+		printSlice(c_out, 0, rRows, rCols);
+		cout << "-------------------------" << endl;
+		printSlice(c_out, 1, rRows, rCols);
+		cout << "-------------------------" << endl;
+		printSlice(c_out, 2, rRows, rCols);
+		cout << "-------------------------" << endl;
+		printSlice(c_out, 3, rRows, rCols);
+		cout << "-------------------------" << endl;
 
 		CUDA_CHECK_RETURN(cudaFree(g_in));
 		CUDA_CHECK_RETURN(cudaFree(g_kernel));
