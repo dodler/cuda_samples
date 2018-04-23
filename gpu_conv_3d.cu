@@ -40,9 +40,6 @@ tensor3 fromGpu(int* g_tensor, int cols, int rows, int depth){
 
 	CUDA_CHECK_RETURN(cudaMemcpy(cf_tensor, g_tensor, t3_int_size(cols, rows, depth), cudaMemcpyDeviceToHost));
 
-	for(int i = 0; i<20; i++)
-		cout << cf_tensor[i] << " ";
-
 	cout << "mem cpy done" << endl;
 
 	for(int k = 0; k<depth; k++){
@@ -110,11 +107,11 @@ __global__ void conv_3d_gpu(int* in, int* kernel, int* out, int cols,int rows,in
 		}
 	}
 
-	if (blockIdx.x < p_depth && threadIdx.x < p_rows){
+	if (blockIdx.x < rDepth && threadIdx.x < rRows){
 		int k = blockIdx.x;
 		int j = threadIdx.x;
 
-		for(int i = p_cols - resid_cols; i<p_cols; i+= stride){
+		for(int i = p_cols - resid_cols; i<rRows; i+= stride){
 
 			int t = 0;
 			for(int l = 0; l<kDepth; l++){
@@ -129,25 +126,23 @@ __global__ void conv_3d_gpu(int* in, int* kernel, int* out, int cols,int rows,in
 		}
 	}
 
-	if (threadIdx.x < p_cols && blockIdx.x < p_depth){
+	if (threadIdx.x < rCols && blockIdx.x < rDepth){
 		int i = threadIdx.x;
 		int k = blockIdx.x;
 //		for(int k = 0; k<p_depth; k++){
-		for(int j = 0; j<p_rows; j+= stride){
+		for(int j = 0; j<rDepth - kRows; j+= stride){
 			int t = 0;
 			for(int l = 0; l<kDepth; l++){
 				for(int n = 0; n<kRows; n++){
 					for(int m = 0; m<kCols; m++){
-//						if (in[(k+l) * p_cols * p_rows + (j+n) * p_cols + (i+m)] > 0){
-//							t++;
-//						}
-						t = k;
-//						t += in[(k+l) * p_cols * p_rows + (j+n) * p_cols + (i+m)] *
-//							 kernel[l * kRows * kCols + n * kCols + m];
+//						t = i + k;
+						t += in[(k+l) * p_cols * p_rows + (j+n) * p_cols + (i+m)] *
+							 kernel[l * kRows * kCols + n * kCols + m];
 					}
 				}
 			}
-			out[k * rCols * rRows + (j-1) * (rCols)+ i] = t;
+			out[k * (rCols)* rRows + (j) * (rCols)+ i] = t;
+//			out[k] = k;
 //		}
 		}
 	}
@@ -190,7 +185,7 @@ __host__ tensor3 conv_3d_gpu(tensor3 in, tensor3 kernel, int cols, int rows, int
 			GpuTimer timer;
 			timer.Start();
 
-			conv_3d_gpu<<<128,128>>>(g_in, g_kernel, g_out, cols, rows, depth, padding, stride, kCols, kRows, kDepth);
+			conv_3d_gpu<<<256,256>>>(g_in, g_kernel, g_out, cols, rows, depth, padding, stride, kCols, kRows, kDepth);
 
 			timer.Stop();
 			total += timer.Elapsed();
@@ -205,14 +200,14 @@ __host__ tensor3 conv_3d_gpu(tensor3 in, tensor3 kernel, int cols, int rows, int
 
 		cout << "from gpu done" << endl;
 
-		printSlice(c_out, 0, rRows, rCols);
-		cout << "-------------------------" << endl;
-		printSlice(c_out, 1, rRows, rCols);
-		cout << "-------------------------" << endl;
-		printSlice(c_out, 2, rRows, rCols);
-		cout << "-------------------------" << endl;
-		printSlice(c_out, 3, rRows, rCols);
-		cout << "-------------------------" << endl;
+//		printSlice(c_out, 0, rRows, rCols);
+//		cout << "-------------------------" << endl;
+//		printSlice(c_out, 1, rRows, rCols);
+//		cout << "-------------------------" << endl;
+//		printSlice(c_out, 2, rRows, rCols);
+//		cout << "-------------------------" << endl;
+//		printSlice(c_out, 3, rRows, rCols);
+//		cout << "-------------------------" << endl;
 
 		CUDA_CHECK_RETURN(cudaFree(g_in));
 		CUDA_CHECK_RETURN(cudaFree(g_kernel));
