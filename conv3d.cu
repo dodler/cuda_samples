@@ -8,7 +8,7 @@
 #include <cuda_runtime_api.h>
 #include <device_launch_parameters.h>
 #include <driver_types.h>
-
+#include <assert.h>
 #include <ctime>
 #include <iostream>
 #include <cstdlib>
@@ -86,7 +86,6 @@ tensor3 cpu_test(tensor3 large, tensor3 kernel, int dim, int kdim, int padding, 
 
 	cout << "starting cpu test" << endl;
 
-	cout << "starting convolution" << endl;
 	clock_t start;
 	double total = 0;
 
@@ -97,9 +96,7 @@ tensor3 cpu_test(tensor3 large, tensor3 kernel, int dim, int kdim, int padding, 
 		deleteTensor3(con, resDim,resDim,resDim);
 	}
 
-	cout << "avg time:" << total / ITER << endl;
-
-	cout << "convolution done" << endl;
+	cout << "cpu avg time:" << total / ITER << endl;
 
 	tensor3 con = conv_3d(large, kernel, dim,dim,dim,kdim,kdim,kdim,stride,padding);
 //	printSlice(con, 0, resDim,resDim);
@@ -125,6 +122,12 @@ bool test_conv(int dim, int kdim, int padding, int stride){
 	tensor3 g_res = gpu_test(large, kernel, dim,kdim, padding,stride, resDim,1);
 
 	bool eq = equal(res, g_res, resDim, resDim,resDim);
+	assert(eq);
+	if (eq){
+		cout << "cpu-gpu output is equal" << endl;
+	}else{
+		cout << "cpu-gpu output is not equal" << endl;
+	}
 
 	deleteTensor3(res, resDim,resDim,resDim);
 	deleteTensor3(g_res, resDim,resDim,resDim);
@@ -142,22 +145,22 @@ __host__ int main(){
 	int stride = 1;
 	int resDim = (dim + 2 * padding - kdim) / stride + 1;
 
-	cout << test_conv(2, 1, 0, 1) << endl;
-	cout << test_conv(2, 1, 1, 1) << endl;
-	cout << test_conv(3, 1, 1, 1) << endl;
-	cout << test_conv(3, 2, 0, 1) << endl;
-	cout << test_conv(9, 2, 1, 1) << endl;
-	cout << test_conv(10, 2, 1, 1) << endl;
-	cout << test_conv(17, 2, 0, 1) << endl;
-	cout << test_conv(16, 2, 1, 1) << endl;
-	cout << test_conv(28, 4, 2, 1) << endl;
-	cout << test_conv(28, 4, 0, 1) << endl;
-	cout << test_conv(50, 3, 0, 1) << endl;
-	cout << test_conv(50, 3, 1, 1) << endl;
-	cout << test_conv(100, 3, 0, 1) << endl;
-	cout << test_conv(100, 3, 1, 1) << endl;
-	cout << test_conv(200, 3, 1, 1) << endl;
-	cout << test_conv(200, 3, 3, 1) << endl;
-	cout << test_conv(200, 2, 5, 1) << endl;
+	test_conv(2, 1, 0, 1);
+	test_conv(2, 1, 1, 1);
+	test_conv(3, 1, 1, 1);
+	test_conv(3, 2, 0, 1);
+	test_conv(9, 2, 1, 1);
+	test_conv(10, 2, 1, 1);
+	test_conv(17, 2, 0, 1);
+	test_conv(16, 2, 1, 1);
+	test_conv(28, 4, 2, 1);
+	test_conv(28, 4, 0, 1);
+	test_conv(50, 3, 0, 1);
+	test_conv(50, 3, 1, 1);
+	test_conv(100, 3, 0, 1);
+	test_conv(100, 3, 1, 1);
+	test_conv(200, 3, 1, 1);
+	test_conv(200, 3, 3, 1);
+	test_conv(200, 2, 5, 1);
 
 }

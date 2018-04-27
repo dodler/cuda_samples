@@ -40,8 +40,6 @@ tensor3 fromGpu(int* g_tensor, int cols, int rows, int depth){
 
 	CUDA_CHECK_RETURN(cudaMemcpy(cf_tensor, g_tensor, t3_int_size(cols, rows, depth), cudaMemcpyDeviceToHost));
 
-	cout << "mem cpy done" << endl;
-
 	for(int k = 0; k<depth; k++){
 		for(int j = 0; j<rows; j++){
 			for(int i = 0; i<cols; i++){
@@ -49,8 +47,6 @@ tensor3 fromGpu(int* g_tensor, int cols, int rows, int depth){
 			}
 		}
 	}
-
-	cout << "copy done" << endl;
 
 	delete [] cf_tensor;
 
@@ -171,13 +167,11 @@ __host__ tensor3 conv_3d_gpu(tensor3 in, tensor3 kernel, int cols, int rows, int
 
 		tensor3 inPad = pad(in, cols, rows, depth, padding);
 
-		cout << "init gpu start" << endl;
+		cout << "starting gpu test" << endl;
 
 		int* g_in = initGpuTensor(inPad, cols + 2 * padding, rows + 2 * padding, depth + 2 * padding);
 		int* g_kernel = initGpuTensor(kernel, kCols, kRows, kDepth);
 		int* g_out = initGpuTensor(out, rCols, rRows, rDepth);
-
-		cout << "starting convolution" << endl;
 
 		double total = 0;
 
@@ -197,8 +191,6 @@ __host__ tensor3 conv_3d_gpu(tensor3 in, tensor3 kernel, int cols, int rows, int
 		cudaDeviceSynchronize();
 
 		tensor3 c_out = fromGpu(g_out, rCols, rRows, rDepth);
-
-		cout << "from gpu done" << endl;
 
 //		printSlice(c_out, 0, rRows, rCols);
 //		cout << "-------------------------" << endl;
