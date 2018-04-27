@@ -103,6 +103,7 @@ tensor3 cpu_test(tensor3 large, tensor3 kernel, int dim, int kdim, int padding, 
 
 	tensor3 con = conv_3d(large, kernel, dim,dim,dim,kdim,kdim,kdim,stride,padding);
 //	printSlice(con, 0, resDim,resDim);
+//	cout << "-------------------------" << endl;
 //	printSlice(con, 1, resDim,resDim);
 
 	return con;
@@ -135,14 +136,28 @@ bool test_conv(int dim, int kdim, int padding, int stride){
 }
 
 __host__ int main(){
-	int dim = 17;
+	int dim = 20;
 	int kdim = 3;
 	int padding = 0;
 	int stride = 1;
 	int resDim = (dim + 2 * padding - kdim) / stride + 1;
 
-	cout << test_conv(17, 3, 0, 1) << endl;
-	cout << test_conv(16, 2, 1, 1) << endl;
+	cout << test_conv(2, 1, 0, 1) << endl;
+	cout << test_conv(2, 1, 1, 1) << endl;
+	cout << test_conv(3, 1, 1, 1) << endl;
+	cout << test_conv(3, 2, 0, 1) << endl;
+	cout << test_conv(9, 2, 1, 1) << endl;
+	cout << test_conv(10, 2, 1, 1) << endl;
 	cout << test_conv(17, 2, 0, 1) << endl;
-	cout << test_conv(17, 4, 2, 1) << endl;
+	cout << test_conv(16, 2, 1, 1) << endl;
+	cout << test_conv(28, 4, 2, 1) << endl;
+	cout << test_conv(28, 4, 0, 1) << endl;
+	cout << test_conv(50, 3, 0, 1) << endl;
+	cout << test_conv(50, 3, 1, 1) << endl;
+	cout << test_conv(100, 3, 0, 1) << endl;
+	cout << test_conv(100, 3, 1, 1) << endl;
+	cout << test_conv(200, 3, 1, 1) << endl;
+	cout << test_conv(200, 3, 3, 1) << endl;
+	cout << test_conv(200, 2, 5, 1) << endl;
+
 }

@@ -43,11 +43,6 @@ int* flat(tensor3 t, int cols,int rows, int depth){
 		}
 	}
 
-//	for(int i = 0; i<cnt; i++){
-//		cout << res[i] << " ";
-//	}
-//	cout << endl;
-
 	return res;
 }
 
@@ -127,8 +122,6 @@ tensor3 pad(tensor3 in, int cols, int rows, int depth, int pad){
 	int rRows = rows + 2 * pad;
 	int rd = depth + 2 * pad;
 
-//	cout << "padding result:" << rCols << " " << rRows << " " << rd << endl;
-
 	tensor3 res = initVals(rCols, rRows, rd, 0);
 
 	for(int i = pad; i<rCols - pad; i++){
@@ -139,4 +132,18 @@ tensor3 pad(tensor3 in, int cols, int rows, int depth, int pad){
 		}
 	}
 	return res;
+}
+
+
+bool equal(tensor3 t1, tensor3 t2, int cols, int rows, int depth){
+	for(int i = 0; i<rows; i++){
+		for(int j = 0; j<cols; j++){
+			for(int k = 0; k<depth; k++){
+				if (t1[i][j][k] != t2[i][j][k]){
+					return false;
+				}
+			}
+		}
+	}
+	return true;
 }

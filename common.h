@@ -23,3 +23,4 @@ tensor3 initVals(int len, int val);
 tensor3 initVals(int cols, int rows, int depth, int val);
 void deleteTensor3(tensor3 t, int d1,int d2, int d3);
 tensor3 pad(tensor3 in, int cols, int rows, int depth, int pad);
+bool equal(tensor3 t1, tensor3 t2, int cols, int rows, int depth);
